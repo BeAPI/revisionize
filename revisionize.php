@@ -28,7 +28,7 @@ Foundation, Inc., 51 Franklin St, Fifth Floor, Boston, MA  02110-1301  USA
 
 namespace Revisionize;
 
-define( 'REVISIONIZE_I18N_DOMAIN', 'revisionize' );
+define( 'REVISIONIZE_VERSION', '1.4.0' );
 
 add_action( 'init', __NAMESPACE__ . '\\init' );
 
@@ -107,7 +107,7 @@ function create() {
 	}
 
 	// if we didn't redirect out, then we fail.
-	wp_die( __( 'Invalid Post ID', REVISIONIZE_I18N_DOMAIN ) );
+	wp_die( __( 'Invalid Post ID', 'revisionize' ) );
 }
 
 function create_revision( $post, $is_original = false ) {
@@ -269,7 +269,7 @@ function post_button() {
 	if ( ! $parent ): ?>
         <div style="text-align: right; margin-bottom: 10px;">
             <a class="button"
-               href="<?php echo get_create_link( $post ) ?>"><?php echo apply_filters( 'revisionize_create_revision_button_text', __( 'Revisionize', REVISIONIZE_I18N_DOMAIN ) ); ?>
+               href="<?php echo get_create_link( $post ) ?>"><?php echo apply_filters( 'revisionize_create_revision_button_text', __( 'Revisionize', 'revisionize' ) ); ?>
             </a>
         </div>
 	<?php else: ?>
@@ -283,8 +283,8 @@ function post_button() {
 function admin_actions( $actions, $post ) {
 	if ( is_create_enabled( $post ) ) {
 		$actions['create_revision'] = '<a href="' . get_create_link( $post ) . '" title="'
-		                              . esc_attr( __( "Create a Revision", REVISIONIZE_I18N_DOMAIN ) )
-		                              . '">' . apply_filters( 'revisionize_create_revision_button_text', __( 'Revisionize', REVISIONIZE_I18N_DOMAIN ) ) . '</a>';
+		                              . esc_attr( __( "Create a Revision", 'revisionize' ) )
+		                              . '">' . apply_filters( 'revisionize_create_revision_button_text', __( 'Revisionize', 'revisionize' ) ) . '</a>';
 	}
 
 	return $actions;
@@ -310,7 +310,7 @@ function notice() {
 	if ( $screen->base == 'post' && $parent ):
 		?>
         <div class="notice notice-warning">
-            <p><?php echo sprintf( __( 'Currently editing a revision of %s. Publishing this post will overwrite it.', REVISIONIZE_I18N_DOMAIN ), get_parent_permalink( $parent ) ); ?></p>
+            <p><?php echo sprintf( __( 'Currently editing a revision of %s. Publishing this post will overwrite it.', 'revisionize' ), get_parent_permalink( $parent ) ); ?></p>
         </div>
 	<?php
 	endif;
