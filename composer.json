@@ -1,0 +1,15 @@
+{
+  "name": "bea/revisionize",
+  "description": "A Wordpress plugin for staging revisions or variations of published content.",
+  "license": "GPL-2.0",
+  "authors": [
+    {
+      "name": "Be API",
+      "email": "technical@beapi.fr"
+    }
+  ],
+  "type" : "wordpress-plugin",
+  "require" : {
+    "composer/installers" : "~1.0"
+  }
+}
