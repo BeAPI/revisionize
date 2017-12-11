@@ -45,14 +45,16 @@ function init() {
 
 		add_action( 'before_delete_post', __NAMESPACE__ . '\\on_delete_post' );
 
-		add_action( 'manage_pages_custom_column' , __NAMESPACE__ . '\\display_posts_revisionize_state', 10, 2 );
-		add_action( 'manage_posts_custom_column' , __NAMESPACE__ . '\\display_posts_revisionize_state', 10, 2 );
-		add_filter( 'manage_posts_columns' , __NAMESPACE__ . '\\add_revisionize_column' );
-		add_filter( 'manage_pages_columns' , __NAMESPACE__ . '\\add_revisionize_column' );
+		add_action( 'manage_pages_custom_column', __NAMESPACE__ . '\\display_posts_revisionize_state', 10, 2 );
+		add_action( 'manage_posts_custom_column', __NAMESPACE__ . '\\display_posts_revisionize_state', 10, 2 );
+		add_filter( 'manage_posts_columns', __NAMESPACE__ . '\\add_revisionize_column' );
+		add_filter( 'manage_pages_columns', __NAMESPACE__ . '\\add_revisionize_column' );
 
 		add_filter( 'parse_query', __NAMESPACE__ . '\\admin_parse_query' );
 
 		add_filter( 'page_attributes_misc_attributes', __NAMESPACE__ . '\\page_attributes_misc_attributes' );
+
+		add_filter( 'revisionize/get_post_custom_keys', __NAMESPACE__ . '\\filter_get_post_custom_keys', 10, 3 );
 	}
 
 	// For users who can publish.
@@ -70,10 +72,22 @@ function init() {
 	}
 }
 
+function filter_get_post_custom_keys( $meta_keys, $id, $context ) {
+	if ( $context == 'copy' ) {
+		foreach ( [ '_post_original', '_post_revision_of', '_post_revision' ] as $meta_key_delete ) {
+			if ( ( $key = array_search( $meta_key_delete, $meta_keys ) ) !== false ) {
+				unset( $meta_keys[ $key ] );
+			}
+		}
+	}
+
+	return $meta_keys;
+}
+
 /* Add custom column to post list */
 function add_revisionize_column( $columns ) {
 	if ( isset( $_GET['revisionize_parent'] ) && (int) $_GET['revisionize_parent'] > 0 ) {
-	    return $columns;
+		return $columns;
 	}
 
 	return array_merge( $columns,
@@ -83,8 +97,8 @@ function add_revisionize_column( $columns ) {
 /* Display custom column */
 function display_posts_revisionize_state( $column, $post_id ) {
 	if ( $column === 'revisionize' ) {
-	    $counter = get_revisionize_counter( $post_id );
-		echo '<a href="'.add_query_arg( array('revisionize_parent' => $post_id) ).'">'.sprintf( _n( '%s revision', '%s revisions', $counter, 'revisionize' ), $counter).'</a>';
+		$counter = get_revisionize_counter( $post_id );
+		echo '<a href="' . add_query_arg( array( 'revisionize_parent' => $post_id ) ) . '">' . sprintf( _n( '%s revision', '%s revisions', $counter, 'revisionize' ), $counter ) . '</a>';
 	}
 }
 
@@ -101,14 +115,14 @@ function get_revisionize_counter( $post_id = 0 ) {
 			'update_post_meta_cache' => false,
 			'cache_results'          => false,
 			'no_found_rows'          => true,
-			'nopaging'         => true,
+			'nopaging'               => true,
 		)
 	);
 
-	return count($counter_query->posts);
+	return count( $counter_query->posts );
 }
 
-function admin_parse_query( $query  ) {
+function admin_parse_query( $query ) {
 	if ( ! is_admin() || ! $query->is_main_query() ) {
 		return false;
 	}
@@ -126,11 +140,11 @@ function admin_parse_query( $query  ) {
 }
 
 function page_attributes_misc_attributes( \WP_Post $post ) {
-    if ( is_revision_post($post) == false ) {
-        return false;
-    }
+	if ( is_revision_post( $post ) == false ) {
+		return false;
+	}
 
-    echo '<script>jQuery("#parent_id").attr("disabled", true);</script>';
+	echo '<script>jQuery("#parent_id").attr("disabled", true);</script>';
 }
 
 // Action for ACF users. Will publish the revision only if user_can_publish_revision.
@@ -142,12 +156,10 @@ function acf_on_publish_post( $post_id ) {
 
 // Action for transition_post_status. Will publish the revision only if user_can_publish_revision.
 function on_publish_post( $new_status, $old_status, $post, $from = "TPS" ) {
-
 	// fix issue where revisions were not published when ACF 5 was installed, but this post type didn't have any custom fields.
 	if ( $from == "TPS" && ! is_cron() && is_acf_post() ) {
 		return;
 	}
-
 
 	if ( $post && $new_status == 'publish' ) {
 		$id = get_revision_of( $post );
@@ -183,14 +195,17 @@ function create() {
 
 function create_revision( $post, $is_original = false ) {
 	$new_id = copy_post( $post, null, $post->ID );
+
 	update_post_meta( $new_id, '_post_revision_of', $post->ID );      // mark the new post as a variation of the old post.
 	update_post_meta( $new_id, '_post_revision', true );
 
-	if ( $is_original ) {
-		update_post_meta( $post->ID, '_post_original', true );
-		delete_post_meta( $new_id, '_post_original' );                    // a revision is never an original
-	} else {
-		delete_post_meta( $post->ID, '_post_original' );
+	if ( is_original_enabled() ) {
+		if ( $is_original ) {
+			update_post_meta( $post->ID, '_post_original', true );
+			delete_post_meta( $new_id, '_post_original' );                    // a revision is never an original
+		} else {
+			delete_post_meta( $post->ID, '_post_original' );
+		}
 	}
 
 	return $new_id;
@@ -198,15 +213,12 @@ function create_revision( $post, $is_original = false ) {
 
 function publish( $post, $original ) {
 	if ( user_can_publish_revision() || is_cron() ) {
-		$clone_id = create_revision( $original );    // keep a backup copy of the live post.
+		if ( is_original_enabled() ) {
+			create_revision( $original );    // keep a backup copy of the live post.
+		}
 
-		delete_post_meta( $post->ID, '_post_revision_of' );                       // remove the variation tag so the meta isn't copied
 		copy_post( $post, $original, $original->post_parent );                    // copy the variation into the live post
-
-		delete_post_meta( $post->ID, '_post_original' );                          // original tag is copied, but remove from source.
-
-
-		wp_delete_post( $post->ID, true );                                        // delete the variation
+		wp_delete_post( $post->ID, true );                               // delete the variation
 
 		if ( ! is_ajax() && ! is_cron() ) {
 			wp_redirect( admin_url( 'post.php?action=edit&post=' . $original->ID ) );   // take us back to the live post
@@ -285,42 +297,43 @@ function copy_post( $post, $to = null, $parent_id = null, $status = 'draft' ) {
 	copy_post_taxonomies( $new_id, $post );
 	copy_post_meta_info( $new_id, $post );
 
-
 	return $new_id;
 }
 
 
 function copy_post_taxonomies( $new_id, $post ) {
-	global $wpdb;
+	// Clear default category (added by wp_insert_post)
+	wp_set_object_terms( $new_id, null, 'category' );
 
-	if ( isset( $wpdb->terms ) ) {
-		// Clear default category (added by wp_insert_post)
-		wp_set_object_terms( $new_id, null, 'category' );
+	$taxonomies = get_object_taxonomies( $post->post_type );
+	$taxonomies = apply_filters( 'revisionize/get_object_taxonomies', $taxonomies, $new_id, $post );
 
-		$taxonomies = get_object_taxonomies( $post->post_type );
+	foreach ( $taxonomies as $taxonomy ) {
+		$post_terms = wp_get_object_terms( $post->ID, $taxonomy, array( 'orderby' => 'term_order' ) );
+		$post_terms = apply_filters( 'revisionize/wp_get_object_terms', $post_terms, $taxonomy, $new_id, $post );
 
-		foreach ( $taxonomies as $taxonomy ) {
-			$post_terms = wp_get_object_terms( $post->ID, $taxonomy, array( 'orderby' => 'term_order' ) );
-			$terms      = array();
-
-			for ( $i = 0; $i < count( $post_terms ); $i ++ ) {
-				$terms[] = $post_terms[ $i ]->slug;
-			}
-
-			wp_set_object_terms( $new_id, $terms, $taxonomy );
-		}
+		$terms = wp_list_pluck( $post_terms, 'slug' );
+		wp_set_object_terms( $new_id, $terms, $taxonomy );
 	}
+
+}
+
+function _get_post_custom_keys( $id, $context = 'copy' ) {
+	$meta_keys = get_post_custom_keys( $id );
+	$meta_keys = apply_filters( 'revisionize/get_post_custom_keys', $meta_keys, $id, $context );
+
+	return $meta_keys;
 }
 
 function clear_post_meta( $id ) {
-	$meta_keys = get_post_custom_keys( $id );
+	$meta_keys = _get_post_custom_keys( $id, 'clear' );
 	foreach ( $meta_keys as $meta_key ) {
 		delete_post_meta( $id, $meta_key );
 	}
 }
 
 function copy_post_meta_info( $new_id, $post ) {
-	$meta_keys = get_post_custom_keys( $post->ID );
+	$meta_keys = _get_post_custom_keys( $post->ID, 'copy' );
 
 	foreach ( $meta_keys as $meta_key ) {
 		$meta_values = get_post_custom_values( $meta_key, $post->ID );
@@ -336,14 +349,15 @@ function copy_post_meta_info( $new_id, $post ) {
 // Action for post_submitbox_start which is only added if user_can_revisionize
 function post_button() {
 	global $post;
+
 	$parent = get_parent_post( $post );
-	if ( ! $parent ): ?>
+	if ( $parent === false && $post->post_status != 'auto-draft' ): ?>
         <div style="text-align: right; margin-bottom: 10px;">
             <a class="button"
                href="<?php echo get_create_link( $post ) ?>"><?php echo apply_filters( 'revisionize_create_revision_button_text', __( 'Revisionize', 'revisionize' ) ); ?>
             </a>
         </div>
-	<?php else: ?>
+	<?php elseif ( is_revision_post( $post ) ) : ?>
         <div>
             <em><?php echo sprintf( __( 'WARNING: Publishing this revision will overwrite %s.' ), get_parent_editlink( $parent, __( 'its original' ) ) ) ?></em>
         </div>
@@ -367,7 +381,7 @@ function post_status_label( $states ) {
 	if ( get_revision_of( $post ) ) {
 		array_unshift( $states, 'Revision' );
 	}
-	if ( is_original_post( $post ) && get_revision_of( $post ) ) {
+	if ( is_original_enabled() && is_original_post( $post ) && get_revision_of( $post ) ) {
 		array_unshift( $states, 'Original' );
 	}
 
@@ -391,7 +405,7 @@ function notice() {
 function add_dashboard_widget() {
 	wp_add_dashboard_widget(
 		'revisionize-posts-needing-review',    // ID of the widget.
-		'Posts needing review',                // Title of the widget.
+		__( 'Contents needing review', 'revisionize' ),                // Title of the widget.
 		__NAMESPACE__ . '\\do_dashboard_widget'  // Callback.
 	);
 }
@@ -410,16 +424,15 @@ function do_dashboard_widget() {
 	) );
 
 	if ( empty( $posts ) ) {
-		_e( 'No posts need reviewed at this time!', 'revisionize' );
+		_e( 'No content need reviewed at this time!', 'revisionize' );
 	}
 
 	echo '<ul>';
 
 	foreach ( $posts as $post ) {
-		printf( '<li><a href="%s">%s</a> - %s</li>',
+		printf( '<li><a href="%s">%s</a>/li>',
 			get_edit_post_link( $post->ID ),
-			get_the_title( $post->ID ),
-			get_the_author_meta( 'nicename', $post->post_author )
+			get_the_title( $post->ID )
 		);
 	}
 
@@ -444,10 +457,14 @@ function is_ajax() {
 	return defined( 'DOING_AJAX' ) && DOING_AJAX;
 }
 
+function is_original_enabled() {
+	return apply_filters( 'revisionize/is_original_enabled', false );
+}
+
 function is_create_enabled( $post ) {
 	$is_enabled = ! get_revision_of( $post ) && current_user_can( 'edit_post', $post->ID );
 
-	return apply_filters( 'revisionize_is_create_enabled', $is_enabled, $post );
+	return apply_filters( 'revisionize/is_create_enabled', $is_enabled, $post );
 }
 
 function is_original_post( $post ) {
