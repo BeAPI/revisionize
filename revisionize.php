@@ -44,6 +44,15 @@ function init() {
 		add_action( 'admin_notices', __NAMESPACE__ . '\\notice' );
 
 		add_action( 'before_delete_post', __NAMESPACE__ . '\\on_delete_post' );
+
+		add_action( 'manage_pages_custom_column' , __NAMESPACE__ . '\\display_posts_revisionize_state', 10, 2 );
+		add_action( 'manage_posts_custom_column' , __NAMESPACE__ . '\\display_posts_revisionize_state', 10, 2 );
+		add_filter( 'manage_posts_columns' , __NAMESPACE__ . '\\add_revisionize_column' );
+		add_filter( 'manage_pages_columns' , __NAMESPACE__ . '\\add_revisionize_column' );
+
+		add_filter( 'parse_query', __NAMESPACE__ . '\\admin_parse_query' );
+
+		add_filter( 'page_attributes_misc_attributes', __NAMESPACE__ . '\\page_attributes_misc_attributes' );
 	}
 
 	// For users who can publish.
@@ -59,7 +68,69 @@ function init() {
 
 		add_action( 'transition_post_status', __NAMESPACE__ . '\\on_publish_post', 10, 3 );
 	}
+}
 
+/* Add custom column to post list */
+function add_revisionize_column( $columns ) {
+	if ( isset( $_GET['revisionize_parent'] ) && (int) $_GET['revisionize_parent'] > 0 ) {
+	    return $columns;
+	}
+
+	return array_merge( $columns,
+		array( 'revisionize' => __( 'Future revisions', 'revisionize' ) ) );
+}
+
+/* Display custom column */
+function display_posts_revisionize_state( $column, $post_id ) {
+	if ( $column === 'revisionize' ) {
+	    $counter = get_revisionize_counter( $post_id );
+		echo '<a href="'.add_query_arg( array('revisionize_parent' => $post_id) ).'">'.sprintf( _n( '%s revision', '%s revisions', $counter, 'revisionize' ), $counter).'</a>';
+	}
+}
+
+function get_revisionize_counter( $post_id = 0 ) {
+	$post_data = \get_post( $post_id );
+
+	$counter_query = new \WP_Query( array(
+			'post_parent'            => $post_id,
+			'meta_key'               => '_post_revision',
+			'post_status'            => 'draft',
+			'post_type'              => $post_data->post_type,
+			'fields'                 => 'ids',
+			'update_post_term_cache' => false,
+			'update_post_meta_cache' => false,
+			'cache_results'          => false,
+			'no_found_rows'          => true,
+			'nopaging'         => true,
+		)
+	);
+
+	return count($counter_query->posts);
+}
+
+function admin_parse_query( $query  ) {
+	if ( ! is_admin() || ! $query->is_main_query() ) {
+		return false;
+	}
+
+	if ( isset( $_GET['revisionize_parent'] ) && (int) $_GET['revisionize_parent'] > 0 ) {
+		$query->set( 'post_parent', (int) $_GET['revisionize_parent'] );
+	} else {
+		$query->set( 'meta_query', [
+			[
+				'key'     => '_post_revision',
+				'compare' => 'NOT EXISTS'
+			]
+		] );
+	}
+}
+
+function page_attributes_misc_attributes( \WP_Post $post ) {
+    if ( is_revision_post($post) == false ) {
+        return false;
+    }
+
+    echo '<script>jQuery("#parent_id").attr("disabled", true);</script>';
 }
 
 // Action for ACF users. Will publish the revision only if user_can_publish_revision.
