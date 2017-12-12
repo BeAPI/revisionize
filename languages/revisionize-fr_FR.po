@@ -1,0 +1,90 @@
+msgid ""
+msgstr ""
+"Project-Id-Version: Revisionize\n"
+"Report-Msgid-Bugs-To: \n"
+"POT-Creation-Date: 2017-12-12 13:54+0100\n"
+"PO-Revision-Date: 2017-12-12 13:55+0100\n"
+"Last-Translator: beapi <amaury@beapi.fr>\n"
+"Language-Team: French (France)\n"
+"Language: fr_FR\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=UTF-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2; plural=n > 1;\n"
+"X-Generator: Poedit 2.0.5\n"
+
+#: revisionize.php:98
+msgid "Future revisions"
+msgstr "Révisions futures"
+
+#: revisionize.php:105
+#, php-format
+msgid "%s revision"
+msgid_plural "%s revisions"
+msgstr[0] "%s révision"
+msgstr[1] "%s révisions"
+
+#: revisionize.php:209
+msgid "Invalid Post ID"
+msgstr "ID invalide"
+
+#. Plugin Name of the plugin/theme
+#: revisionize.php:384 revisionize.php:399
+msgid "Revisionize"
+msgstr "Créer une révision"
+
+#: revisionize.php:389
+#, php-format
+msgid ""
+"WARNING: Publishing this revision will overwrite <a href=\"%s\">its "
+"original</a>."
+msgstr ""
+"Attention: La publication de cette révision va écraser <a href=\"%s\">le "
+"contenu original</a>."
+
+#: revisionize.php:398
+msgid "Create a Revision"
+msgstr "Créer une révision"
+
+#: revisionize.php:410
+msgid "Revision"
+msgstr "Révision"
+
+#: revisionize.php:413
+msgid "Original"
+msgstr "Original"
+
+#: revisionize.php:426
+#, php-format
+msgid ""
+"Currently editing a revision of %s. Publishing this post will overwrite it."
+msgstr ""
+"Vous êtes entrain d'éditer une  révision du contenu suivant : %s. La "
+"publication de cette révision écrasera le contenu original pour cette "
+"version révisée."
+
+#: revisionize.php:436
+msgid "Contents needing review"
+msgstr "Contenus nécessitant une relecture"
+
+#: revisionize.php:455
+msgid "No content need reviewed at this time!"
+msgstr "Aucun contenu ne demande à être relu à cet instant !"
+
+#. Plugin URI of the plugin/theme
+msgid "https://github.com/jamiechong/revisionize"
+msgstr "https://github.com/jamiechong/revisionize"
+
+#. Description of the plugin/theme
+msgid ""
+"Stage revisions or variations of live, published content. Publish the staged "
+"content manually or with the built-in scheduling system."
+msgstr ""
+
+#. Author of the plugin/theme
+msgid "Jamie Chong"
+msgstr ""
+
+#. Author URI of the plugin/theme
+msgid "http://jamiechong.ca"
+msgstr ""

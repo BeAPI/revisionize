@@ -30,8 +30,12 @@ namespace Revisionize;
 
 define( 'REVISIONIZE_VERSION', '1.4.0' );
 
-add_action( 'init', __NAMESPACE__ . '\\init' );
+add_action( 'plugins_loaded', __NAMESPACE__ . '\\load_textdomain' );
+function load_textdomain() {
+	load_plugin_textdomain( 'revisionize', false, basename( dirname( __FILE__ ) ) . '/languages' );
+}
 
+add_action( 'init', __NAMESPACE__ . '\\init' );
 function init() {
 	// Only add filters and actions for admin who can actually edit posts
 	if ( is_admin() && user_can_revisionize() ) {
@@ -43,7 +47,7 @@ function init() {
 		add_action( 'admin_action_revisionize_create', __NAMESPACE__ . '\\create' );
 		add_action( 'admin_notices', __NAMESPACE__ . '\\notice' );
 
-		add_action( 'before_delete_post', __NAMESPACE__ . '\\on_delete_post' );
+		add_action( 'before_delete_post', __NAMESPACE__ . '\\before_delete_post' );
 
 		add_action( 'manage_pages_custom_column', __NAMESPACE__ . '\\display_posts_revisionize_state', 10, 2 );
 		add_action( 'manage_posts_custom_column', __NAMESPACE__ . '\\display_posts_revisionize_state', 10, 2 );
@@ -103,6 +107,12 @@ function display_posts_revisionize_state( $column, $post_id ) {
 }
 
 function get_revisionize_counter( $post_id = 0 ) {
+	$results = get_revisions_ids_by_post( $post_id );
+
+	return count( $results );
+}
+
+function get_revisions_ids_by_post( $post_id = 0 ) {
 	$post_data = \get_post( $post_id );
 
 	$counter_query = new \WP_Query( array(
@@ -119,7 +129,7 @@ function get_revisionize_counter( $post_id = 0 ) {
 		)
 	);
 
-	return count( $counter_query->posts );
+	return $counter_query->posts;
 }
 
 function admin_parse_query( $query ) {
@@ -129,6 +139,12 @@ function admin_parse_query( $query ) {
 
 	if ( isset( $_GET['revisionize_parent'] ) && (int) $_GET['revisionize_parent'] > 0 ) {
 		$query->set( 'post_parent', (int) $_GET['revisionize_parent'] );
+		$query->set( 'meta_query', [
+			[
+				'key'     => '_post_revision',
+				'compare' => 'EXISTS'
+			]
+		] );
 	} else {
 		$query->set( 'meta_query', [
 			[
@@ -203,6 +219,7 @@ function create_revision( $post, $is_original = false ) {
 		if ( $is_original ) {
 			update_post_meta( $post->ID, '_post_original', true );
 			delete_post_meta( $new_id, '_post_original' );                    // a revision is never an original
+            // TODO: Possible to delete this delete_post_meta, not used with new filtered copy post_meta
 		} else {
 			delete_post_meta( $post->ID, '_post_original' );
 		}
@@ -232,12 +249,22 @@ function publish( $post, $original ) {
 }
 
 // if we delete the original post, make the current parent the new original.
-function on_delete_post( $post_id ) {
+// if we detete a post with revision, delete all revisions...
+function before_delete_post( $post_id ) {
 	$post      = get_post( $post_id );
+
 	$parent_id = get_revision_of( $post );
 	if ( $parent_id && is_original_post( $post ) ) {
 		update_post_meta( $parent_id, '_post_original', true );
 	}
+
+	// Delete all revisions
+    $revisions = get_revisions_ids_by_post( $post_id );
+	if ( !empty($revisions) ) {
+	    foreach ( $revisions as $revision_id ) {
+	        wp_delete_post( $revision_id, true );
+        }
+    }
 }
 
 function copy_post( $post, $to = null, $parent_id = null, $status = 'draft' ) {
@@ -359,7 +386,7 @@ function post_button() {
         </div>
 	<?php elseif ( is_revision_post( $post ) ) : ?>
         <div>
-            <em><?php echo sprintf( __( 'WARNING: Publishing this revision will overwrite %s.' ), get_parent_editlink( $parent, __( 'its original' ) ) ) ?></em>
+            <em><?php echo sprintf( __( 'WARNING: Publishing this revision will overwrite <a href="%s">its original</a>.', 'revisionize' ), get_edit_post_link( $parent ) ) ?></em>
         </div>
 	<?php endif;
 }
@@ -378,11 +405,12 @@ function admin_actions( $actions, $post ) {
 // Filter for display_post_states which is only added if user_can_revisionize
 function post_status_label( $states ) {
 	global $post;
+
 	if ( get_revision_of( $post ) ) {
-		array_unshift( $states, 'Revision' );
+		$states['revisionize-revision'] = __( "Revision", 'revisionize' );
 	}
 	if ( is_original_enabled() && is_original_post( $post ) && get_revision_of( $post ) ) {
-		array_unshift( $states, 'Original' );
+		$states['revisionize-original'] = __( "Original", 'revisionize' );
 	}
 
 	return $states;
