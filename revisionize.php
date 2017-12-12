@@ -39,7 +39,7 @@ add_action( 'init', __NAMESPACE__ . '\\init' );
 function init() {
 	// Only add filters and actions for admin who can actually edit posts
 	if ( is_admin() && user_can_revisionize() ) {
-		add_filter( 'display_post_states', __NAMESPACE__ . '\\post_status_label' );
+		add_filter( 'display_post_states', __NAMESPACE__ . '\\post_status_label', 10, 2 );
 		add_filter( 'post_row_actions', __NAMESPACE__ . '\\admin_actions', 10, 2 );
 		add_filter( 'page_row_actions', __NAMESPACE__ . '\\admin_actions', 10, 2 );
 
@@ -210,7 +210,7 @@ function create() {
 }
 
 function create_revision( $post, $is_original = false ) {
-	$new_id = copy_post( $post, null, $post->ID );
+	$new_id = copy_post( $post, null, $post->ID, 'draft', 'now' );
 
 	update_post_meta( $new_id, '_post_revision_of', $post->ID );      // mark the new post as a variation of the old post.
 	update_post_meta( $new_id, '_post_revision', true );
@@ -219,7 +219,7 @@ function create_revision( $post, $is_original = false ) {
 		if ( $is_original ) {
 			update_post_meta( $post->ID, '_post_original', true );
 			delete_post_meta( $new_id, '_post_original' );                    // a revision is never an original
-            // TODO: Possible to delete this delete_post_meta, not used with new filtered copy post_meta
+			// TODO: Possible to delete this delete_post_meta, not used with new filtered copy post_meta
 		} else {
 			delete_post_meta( $post->ID, '_post_original' );
 		}
@@ -234,7 +234,7 @@ function publish( $post, $original ) {
 			create_revision( $original );    // keep a backup copy of the live post.
 		}
 
-		copy_post( $post, $original, $original->post_parent );                    // copy the variation into the live post
+		copy_post( $post, $original, $original->post_parent, 'draft', 'skip' );                    // copy the variation into the live post
 		wp_delete_post( $post->ID, true );                               // delete the variation
 
 		if ( ! is_ajax() && ! is_cron() ) {
@@ -251,7 +251,7 @@ function publish( $post, $original ) {
 // if we delete the original post, make the current parent the new original.
 // if we detete a post with revision, delete all revisions...
 function before_delete_post( $post_id ) {
-	$post      = get_post( $post_id );
+	$post = get_post( $post_id );
 
 	$parent_id = get_revision_of( $post );
 	if ( $parent_id && is_original_post( $post ) ) {
@@ -259,15 +259,15 @@ function before_delete_post( $post_id ) {
 	}
 
 	// Delete all revisions
-    $revisions = get_revisions_ids_by_post( $post_id );
-	if ( !empty($revisions) ) {
-	    foreach ( $revisions as $revision_id ) {
-	        wp_delete_post( $revision_id, true );
-        }
-    }
+	$revisions = get_revisions_ids_by_post( $post_id );
+	if ( ! empty( $revisions ) ) {
+		foreach ( $revisions as $revision_id ) {
+			wp_delete_post( $revision_id, true );
+		}
+	}
 }
 
-function copy_post( $post, $to = null, $parent_id = null, $status = 'draft' ) {
+function copy_post( $post, $to = null, $parent_id = null, $status = 'draft', $sync_date = 'skip' ) {
 	if ( $post->post_type == 'revision' ) {
 		return;
 	}
@@ -300,6 +300,12 @@ function copy_post( $post, $to = null, $parent_id = null, $status = 'draft' ) {
 		'post_date_gmt'  => get_gmt_from_date( $post->post_date )
 	);
 
+	if ( $sync_date === 'now' ) {
+		$data['post_date']     = current_time( 'mysql' );
+		$data['post_date_gmt'] = get_gmt_from_date( $data['post_date'] );
+	} elseif ( $sync_date === 'skip' && $to ) {
+		unset( $data['post_date'], $data['post_date_gmt'] );
+	}
 
 	if ( $to ) {
 		$data['ID'] = $to->ID;
@@ -403,9 +409,7 @@ function admin_actions( $actions, $post ) {
 }
 
 // Filter for display_post_states which is only added if user_can_revisionize
-function post_status_label( $states ) {
-	global $post;
-
+function post_status_label( $states, $post ) {
 	if ( get_revision_of( $post ) ) {
 		$states['revisionize-revision'] = __( "Revision", 'revisionize' );
 	}
