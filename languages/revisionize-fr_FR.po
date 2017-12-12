@@ -2,8 +2,8 @@ msgid ""
 msgstr ""
 "Project-Id-Version: Revisionize\n"
 "Report-Msgid-Bugs-To: \n"
-"POT-Creation-Date: 2017-12-12 13:54+0100\n"
-"PO-Revision-Date: 2017-12-12 13:55+0100\n"
+"POT-Creation-Date: 2017-12-12 14:01+0100\n"
+"PO-Revision-Date: 2017-12-12 14:02+0100\n"
 "Last-Translator: beapi <amaury@beapi.fr>\n"
 "Language-Team: French (France)\n"
 "Language: fr_FR\n"
@@ -64,12 +64,12 @@ msgstr ""
 "version révisée."
 
 #: revisionize.php:436
-msgid "Contents needing review"
-msgstr "Contenus nécessitant une relecture"
+msgid "Revisions needing review"
+msgstr "Révisions nécessitant une relecture"
 
 #: revisionize.php:455
-msgid "No content need reviewed at this time!"
-msgstr "Aucun contenu ne demande à être relu à cet instant !"
+msgid "No revision need reviewed at this time!"
+msgstr "Aucune révision ne demande à être relu à cet instant !"
 
 #. Plugin URI of the plugin/theme
 msgid "https://github.com/jamiechong/revisionize"

@@ -3,7 +3,7 @@ msgid ""
 msgstr ""
 "Plural-Forms: nplurals=INTEGER; plural=EXPRESSION;\n"
 "Project-Id-Version: Revisionize\n"
-"POT-Creation-Date: 2017-12-12 13:54+0100\n"
+"POT-Creation-Date: 2017-12-12 14:01+0100\n"
 "PO-Revision-Date: 2017-12-12 13:48+0100\n"
 "Last-Translator: \n"
 "Language-Team: \n"
@@ -67,11 +67,11 @@ msgid ""
 msgstr ""
 
 #: revisionize.php:436
-msgid "Contents needing review"
+msgid "Revisions needing review"
 msgstr ""
 
 #: revisionize.php:455
-msgid "No content need reviewed at this time!"
+msgid "No revision need reviewed at this time!"
 msgstr ""
 
 #. Plugin URI of the plugin/theme

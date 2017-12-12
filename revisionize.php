@@ -433,7 +433,7 @@ function notice() {
 function add_dashboard_widget() {
 	wp_add_dashboard_widget(
 		'revisionize-posts-needing-review',    // ID of the widget.
-		__( 'Contents needing review', 'revisionize' ),                // Title of the widget.
+		__( 'Revisions needing review', 'revisionize' ),                // Title of the widget.
 		__NAMESPACE__ . '\\do_dashboard_widget'  // Callback.
 	);
 }
@@ -452,7 +452,7 @@ function do_dashboard_widget() {
 	) );
 
 	if ( empty( $posts ) ) {
-		_e( 'No content need reviewed at this time!', 'revisionize' );
+		_e( 'No revision need reviewed at this time!', 'revisionize' );
 	}
 
 	echo '<ul>';
