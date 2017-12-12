@@ -430,7 +430,7 @@ function do_dashboard_widget() {
 	echo '<ul>';
 
 	foreach ( $posts as $post ) {
-		printf( '<li><a href="%s">%s</a>/li>',
+		printf( '<li><a href="%s">%s</a></li>',
 			get_edit_post_link( $post->ID ),
 			get_the_title( $post->ID )
 		);
